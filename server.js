@@ -4,22 +4,32 @@ const { LiveChat } = require("youtube-chat");
 const app = express();
 const PORT = process.env.PORT || 3000; 
 
-app.get('/get/:liveid', async (req, res) => {
-    const liveId = req.params.liveid;
+app.get('/get/:id', async (req, res) => {
+    const id = req.params.id;
 
-    if (!liveId) {
-        return res.status(400).json({ error: "Live ID is required in the path (e.g., /get/XXXXXXXXX)" });
+    if (!id) {
+        return res.status(400).json({ error: "Live ID or Channel ID is required in the path (e.g., /get/XXXXXXXXX or /get/UCXXXXXXXX)" });
     }
 
-    const liveChat = new LiveChat({ liveId: liveId });
+    // IDの形式を判別し、LiveChatインスタンスを生成
+    let liveChat;
+    if (id.startsWith('UC') && id.length >= 24) {
+        // Channel IDとして扱う (現在アクティブなライブを自動で検索)
+        liveChat = new LiveChat({ channelId: id });
+    } else {
+        // Live ID (動画ID) として扱う
+        liveChat = new LiveChat({ liveId: id });
+    }
+
     const collectedMessages = [];
     let isFinished = false;
 
+    // 15秒で強制的にタイムアウトさせる（サーバーレス関数の制限対策）
     const timeout = setTimeout(() => {
         if (!isFinished) {
             liveChat.stop();
             res.status(200).json({ 
-                liveId: liveId, 
+                id: id, 
                 status: "Completed (Time Limit)",
                 messages: collectedMessages
             });
@@ -40,7 +50,7 @@ app.get('/get/:liveid', async (req, res) => {
         clearTimeout(timeout);
         if (!isFinished) {
             res.status(200).json({ 
-                liveId: liveId, 
+                id: id, 
                 status: "Completed",
                 messages: collectedMessages
             });
@@ -51,7 +61,16 @@ app.get('/get/:liveid', async (req, res) => {
     liveChat.on("error", (err) => {
         clearTimeout(timeout);
         if (!isFinished) {
-            res.status(500).json({ error: "Failed to fetch live chat.", details: err.message });
+            let errorDetail = err.message || "Unknown error";
+            // エラーメッセージをより分かりやすく調整
+            if (errorDetail.includes("Live Stream was not found")) {
+                 errorDetail = "Live Stream was not found or is not active/available for chat fetching.";
+            }
+
+            res.status(500).json({ 
+                error: "Failed to fetch live chat.", 
+                details: errorDetail
+            });
             isFinished = true;
         }
     });
@@ -62,8 +81,9 @@ app.get('/get/:liveid', async (req, res) => {
              clearTimeout(timeout);
             if (!isFinished) {
                 res.status(404).json({ 
-                    error: "Failed to start live chat observation. Live stream not found or invalid ID.",
-                    liveId: liveId
+                    error: "Failed to start live chat observation.",
+                    details: "Live stream not found, invalid ID, or package failed to locate it.",
+                    id: id
                 });
                 isFinished = true;
             }
@@ -80,7 +100,5 @@ app.get('/get/:liveid', async (req, res) => {
 module.exports = app;
 
 if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
-        console.log(`Server is running on http://localhost:${PORT}`);
-    });
+    app.listen(PORT, () => {});
 }
