@@ -1,0 +1,13 @@
+{
+  "name": "youtube-chat-server",
+  "version": "1.0.0",
+  "description": "YouTube Live Chat Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "youtube-chat": "^2.2.0"
+  }
+}
