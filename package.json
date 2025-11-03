@@ -1,10 +1,10 @@
 {
   "name": "youtube-chat-server",
   "version": "1.0.0",
-  "description": "YouTube Live Chat Server",
-  "main": "server.js",
+  "description": "YouTube Live Chat API with youtube-chat",
+  "main": "api/live.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node api/live.js"
   },
   "dependencies": {
     "express": "^4.18.2",
